@@ -19,8 +19,10 @@ function download_file() {
     local origin_url="$1"
     local destination_path="$2"
     local sha1_checksum="$3"
+	
+	echo "Downloading from ${origin_url}"
 
-    wget --no-verbose "--output-document=${destination_path}" "${origin_url}"
+    wget -O "${destination_path}" "${origin_url}"
     check_file_sha1_sum "${destination_path}" "${sha1_checksum}"
 }
 
@@ -28,6 +30,8 @@ function download_file() {
 function check_file_sha1_sum() {
     local file_path="$1"
     local expected_sha1_checksum="$2"
+	
+	echo "Checking sum of ${file_path}"
 
     local actual_sha1_checksum="$(sha1sum "${file_path}" | awk '{ print $1 }')"
     if [[ "${expected_sha1_checksum}" != "${actual_sha1_checksum}" ]]; then
@@ -42,6 +46,8 @@ function expand_tgz() {
     local destination_dir_path="$2"
     local extra_tar_args="${@:3}"
 
+	echo "Extracting ${compressed_file_path}"
+	
     tar \
         --extract \
         --directory "${destination_dir_path}" \
@@ -53,6 +59,8 @@ function expand_tgz() {
 
 function deploy_solr_distribution() {
     local mirror_url="$1"
+	
+	echo "Deploying Solr Dist ${mirror_url}"
 
     local solr_download_url="${mirror_url}/solr-${SOLR_VERSION}.tgz"
     download_file \
@@ -60,7 +68,7 @@ function deploy_solr_distribution() {
         "${SOLR_DOWNLOAD_PATH}" \
         "${SOLR_SHA1_CHECKSUM}"
 
-    mkdir --parents "${SOLR_DISTRIBUTION_PATH}"
+    mkdir -p "${SOLR_DISTRIBUTION_PATH}"
     expand_tgz \
         "${SOLR_DOWNLOAD_PATH}" \
         "${SOLR_DISTRIBUTION_PATH}" \
@@ -69,20 +77,26 @@ function deploy_solr_distribution() {
 
 
 function configure_solr_home() {
-    mkdir --parents "${SOLR_HOME_PATH}"
+    mkdir -p "${SOLR_HOME_PATH}"
+	
+	echo "Configuring Solr Home ${SOLR_HOME_PATH}"
+	
     cp \
         "${SOLR_DISTRIBUTION_PATH}/example/solr/collection1/conf/solrconfig.xml" \
         "${SOLR_DISTRIBUTION_PATH}/example/solr/solr.xml" \
         "${SOLR_HOME_PATH}"
-    mkdir "${SOLR_HOME_PATH}/cores"
+    mkdir -p "${SOLR_HOME_PATH}/cores"
 
-    mkdir --parents "${SOLR_INDICES_DIR_PATH}"
+    mkdir -p "${SOLR_INDICES_DIR_PATH}"
     chown "${SOLR_USER}" "${SOLR_INDICES_DIR_PATH}"
 }
 
 
 function configure_jetty_home() {
-    mkdir --parents "${JETTY_HOME_PATH}"
+    mkdir -p "${JETTY_HOME_PATH}"
+	
+	echo "Configuring Jetty Home ${JETTY_HOME_PATH}"
+	
     cp \
         --recursive \
         "${SOLR_DISTRIBUTION_PATH}/example/contexts" \
@@ -92,7 +106,7 @@ function configure_jetty_home() {
         "${JETTY_HOME_PATH}"
 
     local solr_temp_dir_path="${JETTY_HOME_PATH}/solr-webapp"
-    mkdir "${solr_temp_dir_path}"
+    mkdir -p "${solr_temp_dir_path}"
     chown "${SOLR_USER}" "${solr_temp_dir_path}"
 }
 
@@ -100,22 +114,22 @@ function configure_jetty_home() {
 function install_deb_packages() {
     local package_specs="${@}"
 
-    apt-get update --option "Acquire::Retries=3" --quiet=2
-    apt-get install \
-        --option "Acquire::Retries=3" \
-        --no-install-recommends \
-        --assume-yes \
-        --quiet=2 \
-        ${@}
-    rm -rf /var/lib/apt/lists/*
+	echo "Installing Debian Packages"
+	echo ${package_specs}
+    apk update
+    rm -rf /var/lib/apk/lists/*
 }
 
 
 # ===== Main
 
 
-adduser --system "${SOLR_USER}"
+adduser -S "${SOLR_USER}"
+echo "Step 1/4"
 deploy_solr_distribution "$1"
+echo "Step 2/4"
 configure_solr_home
+echo "Step 3/4"
 configure_jetty_home
+echo "Step 4/4"
 install_deb_packages ${RUNTIME_DEPENDENCIES}
