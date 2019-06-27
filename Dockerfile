@@ -12,10 +12,8 @@ ENV \
 
 ARG mirror_url="http://archive.apache.org/dist/lucene/solr/${SOLR_VERSION}"
 
-RUN apk update && apk add bash
-RUN apk --update add tar
 ADD build.sh /tmp/
-RUN /tmp/build.sh "${mirror_url}"
+RUN apk update && apk add bash && apk --update add tar && /tmp/build.sh "${mirror_url}" && apk del vim
 
 ADD solr /usr/local/bin/
 ADD log4j.properties "${JETTY_HOME_PATH}/resources/"

@@ -115,21 +115,31 @@ function install_deb_packages() {
     local package_specs="${@}"
 
 	echo "Installing Debian Packages"
-	echo ${package_specs}
     apk update
     rm -rf /var/lib/apk/lists/*
 }
 
+function remove_unnecessary_files() {
+	echo "Removing unneseccary files"
+	rm -r /opt/solr/docs
+	rm -r /opt/solr/licenses
+	rm /opt/solr/LICENSE.txt
+	rm /opt/solr/README.txt
+	rm /opt/solr/NOTICE.txt
+	rm /opt/solr/SYSTEM_REQUIREMENTS.txt
+}
 
 # ===== Main
 
 
 adduser -S "${SOLR_USER}"
-echo "Step 1/4"
+echo "Step 1/5"
 deploy_solr_distribution "$1"
-echo "Step 2/4"
+echo "Step 2/5"
 configure_solr_home
-echo "Step 3/4"
+echo "Step 3/5"
 configure_jetty_home
-echo "Step 4/4"
+echo "Step 4/5"
 install_deb_packages ${RUNTIME_DEPENDENCIES}
+echo "Step 5/5"
+remove_unnecessary_files
